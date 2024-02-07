@@ -1,0 +1,18 @@
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id : r1
+          uri: lb://PRODUIT-SERVICE
+          predicates:
+            - Path=/produits/**
+        - id: r2
+          uri: lb://MACHINE-SERVICE
+          predicates:
+            - Path=/machines/**
+      discovery:
+          enabled: false
+    application:
+      name: GATEWAY
+server:
+  port: 8080
