@@ -19,5 +19,6 @@ public class Produit {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String Name;
+    private String image;
     private String Matiere_Premier;
 }
