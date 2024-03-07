@@ -17,12 +17,12 @@ public class MachineApplication {
 		SpringApplication.run(MachineApplication.class, args);
 	}
 
-	@Bean
+	/*@Bean
 	CommandLineRunner start(MachineRepository machineRepository) {
 		return args -> {
 			machineRepository.save(new Machine(null, "premier machine", true, "la machine est en marche"));
 			machineRepository.save(new Machine(null, "deuxieme machine", false, "la machine est en panne"));
 			machineRepository.findAll().forEach(System.out::println);
 		};
-	}
+	}*/
 }

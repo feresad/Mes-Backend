@@ -17,8 +17,9 @@ public class ProduitApplication {
 	@Bean
 	CommandLineRunner start(ProduitRepository produitRepository){
 		return args ->{
-			produitRepository.save(new Produit(null,"Cache","lien1","1kg coulourant"));
-			produitRepository.save(new Produit(null,"Bouchon du Lait","lien2","1L"));
+			produitRepository.save(new Produit(null,"Cache","lien1",0,"1kg coulourant"));
+			produitRepository.save(new Produit(null,"Bouchon du Lait","lien2",5,"1L"));
+			produitRepository.save(new Produit(null,"Bouchon du Lait","lien2",50,"1L"));
 			produitRepository.findAll().forEach(System.out::println);
 		};
 	}

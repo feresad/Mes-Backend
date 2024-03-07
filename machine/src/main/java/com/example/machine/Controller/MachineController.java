@@ -35,4 +35,8 @@ public class MachineController {
         machine.setId(id);
         return MachineRepository.save(machine);
     }
+    @GetMapping("/count")
+    public Long countMachine(){
+        return MachineRepository.count();
+    }
 }

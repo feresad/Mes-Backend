@@ -36,5 +36,9 @@ public class ProduitController {
         produit.setId(id);
         return produitRepository.save(produit);
     }
+    @GetMapping("/count")
+    public Long countProduit(){
+        return produitRepository.count();
+    }
 
 }

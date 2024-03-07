@@ -17,6 +17,10 @@ public class GatewayConfig {
                         .uri("lb://PRODUIT-SERVICE"))
                 .route("r2", r -> r.path("/machines/**")
                         .uri("lb://MACHINE-SERVICE"))
+                .route("r3", r -> r.path("/consommations/**")
+                        .uri("lb://CONSOMMATION-SERVICE"))
+                .route("r4", r -> r.path("/rebut/**")
+                        .uri("lb://REBUT-SERVICE"))
                 .build();
     }
 
