@@ -14,7 +14,7 @@ public class ProduitApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(ProduitApplication.class, args);
 	}
-	@Bean
+	/*@Bean
 	CommandLineRunner start(ProduitRepository produitRepository){
 		return args ->{
 			produitRepository.save(new Produit(null,"Cache","lien1",0,"1kg coulourant"));
@@ -22,5 +22,5 @@ public class ProduitApplication {
 			produitRepository.save(new Produit(null,"Bouchon du Lait","lien2",50,"1L"));
 			produitRepository.findAll().forEach(System.out::println);
 		};
-	}
+	}*/
 }

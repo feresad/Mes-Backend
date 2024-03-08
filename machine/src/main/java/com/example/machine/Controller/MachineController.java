@@ -39,4 +39,9 @@ public class MachineController {
     public Long countMachine(){
         return MachineRepository.count();
     }
+    // je veux une recherche par etat
+    @GetMapping("/search")
+    public Iterable<Machine> searchMachine(@RequestParam(name = "etat") boolean etat){
+        return MachineRepository.findByEtat(etat);
+    }
 }

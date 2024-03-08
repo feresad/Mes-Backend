@@ -8,6 +8,8 @@ import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("produits")
 public class ProduitController {
@@ -39,6 +41,11 @@ public class ProduitController {
     @GetMapping("/count")
     public Long countProduit(){
         return produitRepository.count();
+    }
+    // search by name
+    @GetMapping("/search")
+    public List<Produit> searchProduit(@RequestParam(name = "name") String name){
+        return produitRepository.findByNameContains(name);
     }
 
 }
