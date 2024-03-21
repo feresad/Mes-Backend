@@ -3,6 +3,10 @@
   <component name="Encoding">
     <file url="file://$PROJECT_DIR$/Produit/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Rebut/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/auth (2)/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/auth/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/authentication/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/authentification/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/consommation/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/eureka/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/gateway/src/main/java" charset="UTF-8" />

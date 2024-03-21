@@ -15,12 +15,12 @@ public class ConsommationApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(ConsommationApplication.class, args);
 	}
-	@Bean
+	/*@Bean
 	CommandLineRunner start(ConsoRepository ConsomRepository) {
 		return args -> {
 			ConsomRepository.save(new consommation(null, "1 kg courant , 2 kg matiere Premier",2L,3L));
 			ConsomRepository.save(new consommation(null, "24 kg courant , 03 kg matiere Premier",1L,2L));
 			ConsomRepository.findAll().forEach(System.out::println);
 		};
-	}
+	}*/
 }

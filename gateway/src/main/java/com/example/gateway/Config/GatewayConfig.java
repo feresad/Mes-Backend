@@ -21,6 +21,8 @@ public class GatewayConfig {
                         .uri("lb://CONSOMMATION-SERVICE"))
                 .route("r4", r -> r.path("/rebut/**")
                         .uri("lb://REBUT-SERVICE"))
+                .route("r5", r -> r.path("/auth/**")
+                        .uri("lb://AUTH-SERVICE"))
                 .build();
     }
 

@@ -10,7 +10,17 @@
         <option value="$PROJECT_DIR$/machine/pom.xml" />
         <option value="$PROJECT_DIR$/consommation/pom.xml" />
         <option value="$PROJECT_DIR$/Rebut/pom.xml" />
+        <option value="$PROJECT_DIR$/authentification/pom.xml" />
+        <option value="$PROJECT_DIR$/authentication/pom.xml" />
+        <option value="$PROJECT_DIR$/auth/pom.xml" />
+        <option value="$PROJECT_DIR$/auth (2)/pom.xml" />
       </list>
+    </option>
+    <option name="ignoredFiles">
+      <set>
+        <option value="$PROJECT_DIR$/authentication/pom.xml" />
+        <option value="$PROJECT_DIR$/authentification/pom.xml" />
+      </set>
     </option>
   </component>
   <component name="ProjectRootManager" version="2" languageLevel="JDK_20" project-jdk-name="openjdk-21" project-jdk-type="JavaSDK">
