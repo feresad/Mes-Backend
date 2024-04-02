@@ -17,10 +17,9 @@ public class ProduitApplication {
 	/*@Bean
 	CommandLineRunner start(ProduitRepository produitRepository){
 		return args ->{
-			produitRepository.save(new Produit(null,"Cache","lien1",0,"1kg coulourant"));
-			produitRepository.save(new Produit(null,"Bouchon du Lait","lien2",5,"1L"));
-			produitRepository.save(new Produit(null,"Bouchon du Lait","lien2",50,"1L"));
+			produitRepository.save(new Produit(null,"Cache",0,"1kg coulourant",2));
+			produitRepository.save(new Produit(null,"Bouchon du Lait",5,"1L matiere",1));
+			produitRepository.save(new Produit(null,"Bouchon du Lait",50,"1L col",0));
 			produitRepository.findAll().forEach(System.out::println);
-		};
-	}*/
+		};*/
 }

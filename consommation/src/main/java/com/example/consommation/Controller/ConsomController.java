@@ -36,4 +36,9 @@ public class ConsomController {
         consommation.setId(id);
         return consomRepository.save(consommation);
     }
+    //get liste des consommation par id machine
+    @GetMapping("/machine/{idMachine}")
+    public Iterable<consommation> getConsomByMachine(@PathVariable(name = "idMachine") Long idMachine){
+        return consomRepository.findByMachineId(idMachine);
+    }
 }

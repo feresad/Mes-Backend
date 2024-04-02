@@ -21,8 +21,8 @@ public class RebutApplication {
 	/*@Bean
 	CommandLineRunner start(RebutRepository rebutRepository){
 		return args ->{
-			rebutRepository.save(new Rebut(null,6L,2L,40, LocalDate.now()));
-			rebutRepository.save(new Rebut(null,1L,10L,40,LocalDate.now()));
+			rebutRepository.save(new Rebut(null,1L,1L,40, LocalDate.now()));
+			rebutRepository.save(new Rebut(null,2L,2L,40,LocalDate.now()));
 			rebutRepository.findAll().forEach(System.out::println);
 		};
 	}*/

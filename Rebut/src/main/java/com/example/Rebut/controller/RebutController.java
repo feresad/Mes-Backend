@@ -22,4 +22,18 @@ public class RebutController {
         rebut.setId(id);
         return rebutRepository.save(rebut);
     }
+    @PostMapping("/add")
+    public Rebut addRebut(@RequestBody Rebut rebut){
+        return rebutRepository.save(rebut);
+    }
+    @DeleteMapping("/{id}")
+    public void deleteRebut(@PathVariable(name = "id") Long id) {
+        rebutRepository.deleteById(id);
+    }
+    //search by produitid
+    @GetMapping("/search")
+    public Iterable<Rebut> searchRebut(@RequestParam(name = "idProduit") Long idProduit){
+        return rebutRepository.findByProduitId(idProduit);
+    }
+
 }

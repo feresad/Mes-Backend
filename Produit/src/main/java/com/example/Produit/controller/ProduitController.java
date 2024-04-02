@@ -3,11 +3,19 @@ package com.example.Produit.controller;
 import com.example.Produit.ProduitApplication;
 import com.example.Produit.Repository.ProduitRepository;
 import com.example.Produit.entity.Produit;
+import javax.servlet.http.HttpServletRequest;
+import org.apache.commons.fileupload.FileItem;
+import org.apache.commons.fileupload.disk.DiskFileItemFactory;
+import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -25,7 +33,7 @@ public class ProduitController {
         return produitRepository.findById(id).get();
     }
     @PostMapping("/add")
-    Produit addProduit(@RequestBody Produit produit){
+    public Produit addProduit(@RequestBody Produit produit){
         return produitRepository.save(produit);
     }
 
