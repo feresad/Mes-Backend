@@ -155,13 +155,11 @@ public class AuthController {
         u.setPassword(encoder.encode(user.getPassword()));
         return userRepository.save(u);
     }
-    @PutMapping("profile/{id}")
-    public User updateProfile(@PathVariable String username, @RequestBody User user){
-        User u = userRepository.findByUsername(username).get();
-        u.setUsername(user.getUsername());
-        u.setEmail(user.getEmail());
-        return userRepository.save(u);
+    @GetMapping("/user/{username}")
+    public User getUserByUsername(@PathVariable String username){
+        return userRepository.findByUsername(username).get();
     }
+
 
 
 }

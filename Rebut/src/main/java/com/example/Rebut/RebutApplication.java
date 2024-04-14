@@ -9,6 +9,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.context.annotation.Bean;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Date;
 
 @SpringBootApplication
@@ -18,12 +19,12 @@ public class RebutApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(RebutApplication.class, args);
 	}
-	/*@Bean
+	@Bean
 	CommandLineRunner start(RebutRepository rebutRepository){
 		return args ->{
-			rebutRepository.save(new Rebut(null,1L,1L,40, LocalDate.now()));
-			rebutRepository.save(new Rebut(null,2L,2L,40,LocalDate.now()));
+			rebutRepository.save(new Rebut(null,1L,1L,40, LocalDateTime.now()));
+			rebutRepository.save(new Rebut(null,2L,2L,40, LocalDateTime.now()));
 			rebutRepository.findAll().forEach(System.out::println);
 		};
-	}*/
+	}
 }

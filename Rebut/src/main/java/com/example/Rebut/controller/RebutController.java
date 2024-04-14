@@ -6,6 +6,8 @@ import com.example.Rebut.entity.Rebut;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+
 @RestController
 @RequestMapping("/rebut")
 
@@ -24,6 +26,7 @@ public class RebutController {
     }
     @PostMapping("/add")
     public Rebut addRebut(@RequestBody Rebut rebut){
+        rebut.setDate(LocalDateTime.now());
         return rebutRepository.save(rebut);
     }
     @DeleteMapping("/{id}")

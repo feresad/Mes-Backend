@@ -5,9 +5,10 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDate;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 @Entity
 @AllArgsConstructor
@@ -22,6 +23,8 @@ public class Rebut {
     private Long idProduit;
     private Long idMachine;
     private int quantite;
-    private LocalDate date;
+    @Column(name = "date", nullable = false)
+    private LocalDateTime date;
+
 
 }
