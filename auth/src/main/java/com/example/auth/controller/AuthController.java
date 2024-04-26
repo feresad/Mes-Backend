@@ -8,6 +8,7 @@ import com.example.auth.security.UserDetailsImpl;
 import com.google.common.net.HttpHeaders;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -158,6 +159,58 @@ public class AuthController {
     @GetMapping("/user/{username}")
     public User getUserByUsername(@PathVariable String username){
         return userRepository.findByUsername(username).get();
+    }
+    @GetMapping("/users/admin")
+    public List<User> getAllAdminUsers() {
+        return userRepository.findByRolesName("ADMIN");
+    }
+    @PutMapping("/update")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> updateUserDetails(@RequestBody UpdateUserRequest updateUserRequest) {
+        // Récupérer l'identifiant de l'utilisateur authentifié
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Object principal = authentication.getPrincipal();
+
+        if (!(principal instanceof UserDetailsImpl)) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new MessageResponse("User details could not be updated"));
+        }
+
+        UserDetailsImpl userDetails = (UserDetailsImpl) principal;
+        Long userId = userDetails.getId();
+
+        // Vérifier si l'utilisateur existe dans la base de données
+        Optional<User> optionalUser = userRepository.findById(userId);
+        if (!optionalUser.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new MessageResponse("User not found"));
+        }
+        User user = optionalUser.get();
+
+        // Mettre à jour le nom d'utilisateur et l'e-mail si les valeurs sont fournies dans la requête
+        if (updateUserRequest.getUsername() != null && !updateUserRequest.getUsername().isEmpty()) {
+            user.setUsername(updateUserRequest.getUsername());
+        }
+        if (updateUserRequest.getEmail() != null && !updateUserRequest.getEmail().isEmpty()) {
+            user.setEmail(updateUserRequest.getEmail());
+        }
+
+        // Enregistrer les modifications dans la base de données
+        userRepository.save(user);
+
+        return ResponseEntity.ok(new MessageResponse("User details updated successfully"));
+    }
+    @GetMapping("/search")
+    public ResponseEntity<?> searchUserByUsername(@RequestParam String username) {
+        Optional<User> optionalUser = userRepository.findByUsern(username);
+        if (optionalUser.isPresent()) {
+            User user = optionalUser.get();
+            // Traitement avec l'utilisateur trouvé, par exemple retourner l'utilisateur dans la réponse
+            return ResponseEntity.ok(user);
+        } else {
+            // Gérer le cas où aucun utilisateur n'est trouvé avec ce nom d'utilisateur
+            return ResponseEntity.notFound().build();
+        }
     }
 
 

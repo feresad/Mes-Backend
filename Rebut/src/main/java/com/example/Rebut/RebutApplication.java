@@ -19,12 +19,12 @@ public class RebutApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(RebutApplication.class, args);
 	}
-	@Bean
+	/*@Bean
 	CommandLineRunner start(RebutRepository rebutRepository){
 		return args ->{
 			rebutRepository.save(new Rebut(null,1L,1L,40, LocalDateTime.now()));
-			rebutRepository.save(new Rebut(null,2L,2L,40, LocalDateTime.now()));
+			rebutRepository.save(new Rebut(null,2L,2L,100, LocalDateTime.now()));
 			rebutRepository.findAll().forEach(System.out::println);
 		};
-	}
+	}*/
 }
