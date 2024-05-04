@@ -1,27 +1,17 @@
 package com.example.Produit.controller;
 
-import com.example.Produit.ProduitApplication;
 import com.example.Produit.Repository.ProduitRepository;
-import com.example.Produit.entity.Produit;
-import javax.servlet.http.HttpServletRequest;
+import com.example.Produit.entity.*;
 
-import com.example.Produit.entity.ProduitConso;
-import com.example.Produit.entity.ProduitFini;
-import org.apache.commons.fileupload.FileItem;
-import org.apache.commons.fileupload.disk.DiskFileItemFactory;
-import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -29,6 +19,7 @@ import java.util.stream.Collectors;
 public class ProduitController {
     @Autowired
     private ProduitRepository produitRepository;
+
 
     @GetMapping("/all")
     public Iterable<Produit> getAllProduits(){
@@ -38,6 +29,19 @@ public class ProduitController {
     @GetMapping("/produitFini")
     public List<ProduitFini> getProduitFini(){
         return produitRepository.findAllBy();
+    }
+    @GetMapping("/produitFini/{id}")
+    public ProduitFini getProduitFiniById(@PathVariable(name = "id") Long id){
+        return (ProduitFini) produitRepository.findById(id).get();
+    }
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<Void> deleteProduit(@PathVariable(name = "id") Long id) {
+        Produit produit = produitRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Produit not found with id: " + id));
+
+        produitRepository.delete(produit);
+
+        return ResponseEntity.noContent().build(); // Renvoie une réponse vide avec un statut 204
     }
     @GetMapping("/produitConso")
     public List<ProduitConso> getProduitConso(){
@@ -49,12 +53,29 @@ public class ProduitController {
         return produitRepository.findById(id).get();
     }
     @PostMapping("/addFini")
-    public ProduitFini addProduitFini(@RequestBody ProduitFini produitFini){
+    public ResponseEntity<ProduitFini> addProduitFini(@RequestBody ProduitFini produitFini) {
         produitFini.setEtat(0);
-        if (produitFini.getMatieresPremieres() == null) {
-            produitFini.setMatieresPremieres(new ArrayList<>());
+
+        ProduitFini savedProduitFini = produitRepository.save(produitFini);
+
+        // Calculez les quantités requises pour les matières premières
+        soustraireQuantites(savedProduitFini);
+
+        return ResponseEntity.ok(savedProduitFini);
+    }
+
+    private void soustraireQuantites(ProduitFini produitFini) {
+        // Calculez les quantités requises pour les matières premières
+        for (MatierePremier matiere : produitFini.getMatieresPremieres()) {
+            float quantiteRequise = matiere.getQuantite() * produitFini.getQuantite();
+            ProduitConso produitConso = produitRepository.findProduitConsoByName(matiere.getName());
+
+            if (produitConso != null) {
+                float nouvelleQuantite = produitConso.getQuantite() - quantiteRequise;
+                produitConso.setQuantite(nouvelleQuantite);
+                produitRepository.save(produitConso);
+            }
         }
-        return produitRepository.save(produitFini);
     }
 
     @PostMapping("/addConso")
@@ -62,15 +83,7 @@ public class ProduitController {
         produitConso.setDate(LocalDateTime.now());
         return produitRepository.save(produitConso);
     }
-    @DeleteMapping("/{id}")
-    public void deleteProduit(@PathVariable(name = "id") Long id){
-        produitRepository.deleteById(id);
-    }
-    @PutMapping("/{id}")
-    public Produit updateProduit(@PathVariable(name = "id") Long id, @RequestBody Produit produit){
-        produit.setId(id);
-        return produitRepository.save(produit);
-    }
+
     @GetMapping("/count")
     public Long countProduit(){
         return produitRepository.count();
@@ -82,22 +95,70 @@ public class ProduitController {
     }
 
     @PutMapping("/fini/{id}")
-    public ResponseEntity<ProduitFini> updateProduitFini(@PathVariable(name = "id") Long id,
-                                                         @RequestBody ProduitFini produitFini) {
-        // Ensure the ID in the URL matches the product being updated
-        produitFini.setId(id);
+    public ResponseEntity<ProduitFini> updateProduitFini(
+            @PathVariable Long id,
+            @RequestBody ProduitFini produitFini) {
 
-        // Handle potential errors (e.g., product not found)
+        // Vérifiez que l'ID correspond
+        if (!id.equals(produitFini.getId())) {
+            return ResponseEntity.badRequest().body(null);
+        }
+
+        // Récupérer le ProduitFini existant
         ProduitFini existingProduitFini = (ProduitFini) produitRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ProduitFini not found with id: " + id));
 
-        // Update fields and associated entities (matieresPremieres)
+        // Récupérer la quantité globale du produit fini
+        float quantiteGlobale = produitFini.getQuantite();
+
+        // Cartographier les anciennes et nouvelles quantités des matières premières
+        Map<String, Float> anciennesQuantites = existingProduitFini.getMatieresPremieres().stream()
+                .collect(Collectors.toMap(MatierePremier::getName, MatierePremier::getQuantite));
+
+        Map<String, Float> nouvellesQuantites = produitFini.getMatieresPremieres().stream()
+                .collect(Collectors.toMap(MatierePremier::getName, MatierePremier::getQuantite));
+
+        // Traitez les ajustements de produits consommables en fonction des différences de quantité
+        for (Map.Entry<String, Float> entry : anciennesQuantites.entrySet()) {
+            String matiereName = entry.getKey();
+            Float ancienneQuantite = entry.getValue();
+
+            if (nouvellesQuantites.containsKey(matiereName)) {
+                Float nouvelleQuantite = nouvellesQuantites.get(matiereName);
+
+                // Calculer la différence multipliée par la quantité globale du produit fini
+                float difference = (nouvelleQuantite - ancienneQuantite) * quantiteGlobale;
+
+                // Trouver le ProduitConso correspondant
+                ProduitConso produitConso = produitRepository.findProduitConsoByName(matiereName);
+
+                if (produitConso != null) {
+                    float quantiteConso = produitConso.getQuantite();
+
+                    if (difference < 0) {
+                        // Si la différence est négative, ajouter la différence (augmentation de la quantité consommable)
+                        quantiteConso += Math.abs(difference);
+                    } else if (difference > 0) {
+                        // Si la différence est positive, soustraire la différence (diminution de la quantité consommable)
+                        quantiteConso -= Math.abs(difference);
+                    }
+
+                    // Mettre à jour la quantité du ProduitConso
+                    produitConso.setQuantite(quantiteConso);
+                    produitRepository.save(produitConso);
+                }
+            }
+        }
+
+        // Mettre à jour les détails du ProduitFini avec les nouvelles données
         existingProduitFini.setName(produitFini.getName());
         existingProduitFini.setQuantite(produitFini.getQuantite());
         existingProduitFini.setEtat(produitFini.getEtat());
         existingProduitFini.setMatieresPremieres(produitFini.getMatieresPremieres());
 
+        // Sauvegarder le ProduitFini mis à jour
         ProduitFini updatedProduitFini = produitRepository.save(existingProduitFini);
+
         return ResponseEntity.ok(updatedProduitFini);
     }
     @PutMapping("/conso/{id}")

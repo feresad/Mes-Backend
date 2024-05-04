@@ -20,6 +20,8 @@ public interface ProduitRepository extends JpaRepository<Produit,Long> {
     @Query("SELECT p FROM ProduitConso p")
     List<ProduitConso> findAllProduitConso();
 
+    @Query("select pc from ProduitConso pc where pc.Name = :name")
+    public ProduitConso findProduitConsoByName(@Param("name") String name);
 
 
 }

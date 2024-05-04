@@ -149,7 +149,6 @@ public class AuthController {
     public Long countUser(){
         return userRepository.count();
     }
-    // modfier only mot de passe
     @PutMapping("/{id}")
     public User updateUser(@PathVariable Long id, @RequestBody User user){
         User u = userRepository.findById(id).get();
@@ -164,41 +163,26 @@ public class AuthController {
     public List<User> getAllAdminUsers() {
         return userRepository.findByRolesName("ADMIN");
     }
-    @PutMapping("/update")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> updateUserDetails(@RequestBody UpdateUserRequest updateUserRequest) {
-        // Récupérer l'identifiant de l'utilisateur authentifié
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Object principal = authentication.getPrincipal();
+    @PutMapping("/update/{username}")
+    public ResponseEntity<?> updateUser(@PathVariable String username, @RequestBody User updatedUserDetails) {
+        Optional<User> userOptional = userRepository.findByUsername(username);
 
-        if (!(principal instanceof UserDetailsImpl)) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new MessageResponse("User details could not be updated"));
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+
+            user.setUsername(updatedUserDetails.getUsername());
+            user.setEmail(updatedUserDetails.getEmail());
+            user.setPassword(encoder.encode(updatedUserDetails.getPassword()));
+
+            userRepository.save(user);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Utilisateur mis à jour avec succès");
+
+            return ResponseEntity.ok(response);
+        } else {
+            return ResponseEntity.status(404).body("Utilisateur non trouvé");
         }
-
-        UserDetailsImpl userDetails = (UserDetailsImpl) principal;
-        Long userId = userDetails.getId();
-
-        // Vérifier si l'utilisateur existe dans la base de données
-        Optional<User> optionalUser = userRepository.findById(userId);
-        if (!optionalUser.isPresent()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new MessageResponse("User not found"));
-        }
-        User user = optionalUser.get();
-
-        // Mettre à jour le nom d'utilisateur et l'e-mail si les valeurs sont fournies dans la requête
-        if (updateUserRequest.getUsername() != null && !updateUserRequest.getUsername().isEmpty()) {
-            user.setUsername(updateUserRequest.getUsername());
-        }
-        if (updateUserRequest.getEmail() != null && !updateUserRequest.getEmail().isEmpty()) {
-            user.setEmail(updateUserRequest.getEmail());
-        }
-
-        // Enregistrer les modifications dans la base de données
-        userRepository.save(user);
-
-        return ResponseEntity.ok(new MessageResponse("User details updated successfully"));
     }
     @GetMapping("/search")
     public ResponseEntity<?> searchUserByUsername(@RequestParam String username) {

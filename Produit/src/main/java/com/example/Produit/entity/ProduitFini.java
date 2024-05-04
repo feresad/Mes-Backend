@@ -9,7 +9,7 @@ import java.util.List;
 @DiscriminatorValue("Fini")
 public class ProduitFini extends Produit{
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JoinColumn(name = "produit_fini_id") // Clé étrangère
+    @JoinColumn(name = "produit_fini_id")
     private List<MatierePremier> matieresPremieres;
     private int etat;
 

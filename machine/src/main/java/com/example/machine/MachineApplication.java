@@ -22,9 +22,10 @@ public class MachineApplication {
 	/*@Bean
 	CommandLineRunner start(MachineRepository machineRepository, PanneRepository panneRepository){
 		return args -> {
-			machineRepository.save(new Machine(null, "premier machine", true,null));
-			machineRepository.save(new Machine(null, "deuxieme machine", false,null));
+			machineRepository.save(new Machine(null, "premier machine", true,1L));
+			machineRepository.save(new Machine(null, "deuxieme machine", false,2L));
 			machineRepository.findAll().forEach(System.out::println);
+			panneRepository.save(new Panne(null, "Aucune Panne"));
 			panneRepository.save(new Panne(null, "Arret Indetermine"));
 			panneRepository.save(new Panne(null, "Maintenance moule"));
 			panneRepository.save(new Panne(null, "Manque effectif"));

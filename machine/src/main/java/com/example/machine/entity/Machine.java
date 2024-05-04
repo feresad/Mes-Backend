@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -23,4 +24,6 @@ public class Machine {
 
     @Column(name = "panne_id")
     private Long panneId;
+    private String username;
+    private LocalDateTime date;
 }

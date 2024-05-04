@@ -13,7 +13,7 @@ public class GatewayConfig {
     @Bean
     public RouteLocator gatewayRoutes(RouteLocatorBuilder builder) {
         return builder.routes()
-                .route("r1", r -> r.path("/produits/**")
+                .route("r1", r -> r.path("/produits/**","/ordreFabrication/**")
                         .uri("lb://PRODUIT-SERVICE"))
                 .route("r2", r -> r.path("/machines/**")
                         .uri("lb://MACHINE-SERVICE"))
