@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Panne de Machine</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: white;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #333;
+        }
+
+        p {
+            margin: 10px 0;
+        }
+
+        .info {
+            background-color: #e9f5ff;
+            padding: 10px;
+            border-left: 4px solid #2a9df4;
+        }
+
+        .footer {
+            font-size: 12px;
+            color: #777;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .email-image {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .email-image img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Alerte : Panne de Machine</h1>
+    <div class="email-image">
+        <img src="https://i.postimg.cc/fRQBgcY3/icone-panne-reparation.png" alt="Panne de Machine" />
+         </div>
+
+    <p>Salut,</p>
+    <p>
+        Nous souhaitons vous informer qu'une panne a été détectée sur la machine
+        <strong th:text="${machineName}">></strong>. Cette panne a été signalée le
+        <strong th:text="${formattedDate}"></strong> à <strong th:text="${formattedTime}"></strong>.
+    </p>
+
+    <div class="info">
+        <p><strong>Machine :</strong> <span th:text="${machineName}"></span></p>
+        <p><strong>Date </strong> <span th:text="${formattedDate}"></span></p>
+        <p><strong>Heure :</strong> <span th:text="${formattedTime}"></span></p>
+    </div>
+
+    <p>
+        Veuillez prendre les mesures nécessaires pour résoudre ce problème dès que possible. Pour toute question ou
+        assistance, n'hésitez pas à nous contacter.
+    </p>
+
+    <p>Merci pour votre compréhension.</p>
+    <p>Cordialement,</p>
+    <p>L'équipe technique</p>
+
+    <div class="footer">
+        <p>Vous avez reçu cet e-mail car vous êtes administrateur de notre système.</p>
+        <p>Si vous avez des questions, veuillez nous contacter à support@example.com.</p>
+    </div>
+</div>
+</body>
+</html>

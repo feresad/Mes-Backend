@@ -8,6 +8,7 @@ import com.example.machine.repository.MachineRepository;
 import com.example.machine.repository.PanneRepository;
 import org.apache.catalina.User;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.core.ParameterizedTypeReference;
@@ -16,9 +17,12 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.thymeleaf.TemplateEngine;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 
@@ -35,7 +39,8 @@ public class MachineController {
     private RestTemplate restTemplate;
     @Value("${auth-service.url}")
     private String authServiceUrl;
-
+    @Value("${produit-service.url}")
+    private String produitServiceUrl;
     @GetMapping("/all")
     public Iterable<Machine> getAllMachines(){
         return MachineRepository.findAll();
@@ -72,12 +77,24 @@ public class MachineController {
             Machine updatedMachine = MachineRepository.save(existingMachine);
             // Vérifiez si l'état a changé de true à false
             if (previousState && !machine.isEtat()) {
-                // Envoie d'e-mail à tous les administrateurs
+                Long machineId = existingMachine.getId();
+                // Appel REST vers le service Produit pour mettre à jour l'état de l'ordre de fabrication
+                String updateOrdreFabricationUrl = produitServiceUrl + "/ordreFabrication/updateByMachineId/" + machineId;
+                try {
+                    restTemplate.put(updateOrdreFabricationUrl, null);
+                } catch (HttpClientErrorException e) {
+                    System.err.println("Erreur lors de la mise à jour de l'ordre de fabrication : " + e.getMessage());
+                }
+                DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+                String formattedDate = updatedMachine.getDate().format(dateFormatter);
+                String formattedTime = updatedMachine.getDate().format(timeFormatter);
+
                 List<String> adminEmails = getAllAdminEmails();
-                String subject = "Changement d'état de la machine";
-                String body = "la machine '" + updatedMachine.getName() + "' est tombée en panne.";
+                String subject = "Panne de machine " + updatedMachine.getName();
+
                 for (String adminEmail : adminEmails) {
-                    emailService.sendSimpleEmail(adminEmail, subject, body);
+                    emailService.sendMachinePanneEmail(adminEmail, subject, updatedMachine.getName(), formattedDate, formattedTime);
                 }
             }
             return updatedMachine;

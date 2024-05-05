@@ -19,13 +19,15 @@ public class OrdreFabrication {
 
 
     private Long idProduitFini;
+    private Long idCommande;
 
     private Long  idmachine;
 
     private int quantite;
 
-    private Float quantiteRebut;
+    private int quantiteRebut;
 
     private int etat;
+    private LocalDate dateDebut;
     private LocalDate dateFin;
 }
