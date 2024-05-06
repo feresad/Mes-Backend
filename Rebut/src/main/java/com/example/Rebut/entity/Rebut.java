@@ -20,7 +20,7 @@ public class Rebut {
     @Id
     @GeneratedValue(strategy= GenerationType.IDENTITY)
     private Long id;
-    private Long idProduit;
+    private Long idProduitFini;
     private Long idMachine;
     private int quantite;
     @Column(name = "date", nullable = false)

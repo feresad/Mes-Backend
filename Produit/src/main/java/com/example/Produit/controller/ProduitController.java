@@ -1,6 +1,7 @@
 package com.example.Produit.controller;
 
 import com.example.Produit.Repository.CommandeRepository;
+import com.example.Produit.Repository.Plan_ProduitRepository;
 import com.example.Produit.Repository.ProduitRepository;
 import com.example.Produit.entity.*;
 
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -22,6 +24,8 @@ public class ProduitController {
     private ProduitRepository produitRepository;
     @Autowired
     private CommandeRepository commandeRepository;
+    @Autowired
+    private Plan_ProduitRepository planProduitRepository;
 
 
     @GetMapping("/all")
@@ -57,38 +61,48 @@ public class ProduitController {
     }
     @PostMapping("/addFini")
     public ResponseEntity<ProduitFini> addProduitFini(@RequestBody ProduitFini produitFini) {
+        // Vérifier si le stock est suffisant
         boolean stockSuffisant = checkStockSuffisant(produitFini);
-
         if (!stockSuffisant) {
-            throw new ResourceNotFoundException("Stock insuffisant pour le produit Consommable .");
-
+            throw new ResourceNotFoundException("Stock insuffisant pour le produit fini.");
         }
+
         produitFini.setEtat(0);
 
+        // Enregistrer le produit fini
         ProduitFini savedProduitFini = produitRepository.save(produitFini);
+
+        // Créer une commande
         Commande commande = new Commande();
         commande.setIdProduitFini(savedProduitFini.getId());
         commande.setQuantite((int) savedProduitFini.getQuantite());
-
-        // Sauvegarder la commande
         commandeRepository.save(commande);
 
+        // Mettre à jour Plan_Produit avec les quantités nécessaires
+        for (MatierePremier matiere : produitFini.getMatieresPremieres()) {
+            float quantiteRequise = matiere.getQuantite() * produitFini.getQuantite();
 
-        // Calculez les quantités requises pour les matières premières
+            Plan_Produit planProduit = new Plan_Produit();
+            planProduit.setMatierePremierName(matiere.getName());
+            planProduit.setQuantiteTotal(quantiteRequise);
+            planProduit.setProduitFini(savedProduitFini);
+
+            planProduitRepository.save(planProduit);
+        }
+
+        // Soustraire les quantités des matières premières du stock
         soustraireQuantites(savedProduitFini);
 
         return ResponseEntity.ok(savedProduitFini);
     }
 
     private void soustraireQuantites(ProduitFini produitFini) {
-        // Calculez les quantités requises pour les matières premières
         for (MatierePremier matiere : produitFini.getMatieresPremieres()) {
             float quantiteRequise = matiere.getQuantite() * produitFini.getQuantite();
             ProduitConso produitConso = produitRepository.findProduitConsoByName(matiere.getName());
 
             if (produitConso != null) {
-                float nouvelleQuantite = produitConso.getQuantite() - quantiteRequise;
-                produitConso.setQuantite(nouvelleQuantite);
+                produitConso.setQuantite(produitConso.getQuantite() - quantiteRequise);
                 produitRepository.save(produitConso);
             }
         }
@@ -115,107 +129,77 @@ public class ProduitController {
             @PathVariable Long id,
             @RequestBody ProduitFini produitFini) {
 
+        // Assurez-vous que l'ID de la requête correspond à l'ID du produit fini
         if (!id.equals(produitFini.getId())) {
             return ResponseEntity.badRequest().body(null);
         }
 
+        // Trouver le produit fini existant ou renvoyer une erreur si introuvable
         ProduitFini existingProduitFini = (ProduitFini) produitRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ProduitFini not found with id: " + id));
 
-        Commande existingCommande = commandeRepository.findByIdProduitFini(existingProduitFini.getId());
-
-        if (existingCommande == null) {
-            throw new ResourceNotFoundException("Commande not found for product: " + existingProduitFini.getName());
-        }
-
+        // Obtenez les anciennes et nouvelles quantités du produit fini
         float ancienneQuantiteProduitFini = existingProduitFini.getQuantite();
         float nouvelleQuantiteProduitFini = produitFini.getQuantite();
+        float differenceProduitFini = nouvelleQuantiteProduitFini - ancienneQuantiteProduitFini;
 
-        // Si la quantité du produit fini a changé, ajuster le produit consommable
-        if (ancienneQuantiteProduitFini != nouvelleQuantiteProduitFini) {
-            float differenceProduitFini = nouvelleQuantiteProduitFini - ancienneQuantiteProduitFini;
-
-            // Ajuster les matières premières en fonction du changement de quantité
-            Map<String, Float> anciennesQuantitesMatierePremiere = existingProduitFini.getMatieresPremieres().stream()
-                    .collect(Collectors.toMap(MatierePremier::getName, MatierePremier::getQuantite));
-
-            for (Map.Entry<String, Float> entry : anciennesQuantitesMatierePremiere.entrySet()) {
-                String matiereNom = entry.getKey();
-                float ancienneQuantiteMatiere = entry.getValue();
-                ProduitConso produitConso = produitRepository.findProduitConsoByName(matiereNom);
-
-                if (produitConso != null) {
-                    float quantiteRequise = ancienneQuantiteMatiere * differenceProduitFini;
-                    produitConso.setQuantite(produitConso.getQuantite() - quantiteRequise);
-                    if(produitConso.getQuantite() < 0){
-                        throw new ResourceNotFoundException("Stock insuffisant pour le produit Consommable .");
-                    }else{
-                        produitRepository.save(produitConso);
-                    }
-                }
-            }
-
-            // Mettre à jour la commande
-            existingCommande.setQuantite((int) nouvelleQuantiteProduitFini);
-            commandeRepository.save(existingCommande);
-        }
-
-        // Traiter les modifications des quantités des matières premières
+        // Ajuster les quantités de matières premières et les commandes si nécessaire
         Map<String, Float> anciennesQuantitesMatierePremiere = existingProduitFini.getMatieresPremieres().stream()
                 .collect(Collectors.toMap(MatierePremier::getName, MatierePremier::getQuantite));
 
         Map<String, Float> nouvellesQuantitesMatierePremiere = produitFini.getMatieresPremieres().stream()
                 .collect(Collectors.toMap(MatierePremier::getName, MatierePremier::getQuantite));
 
+        // Recalculer et ajuster Plan_Produit selon les nouvelles quantités
         for (String matiereNom : nouvellesQuantitesMatierePremiere.keySet()) {
             float ancienneQuantite = anciennesQuantitesMatierePremiere.getOrDefault(matiereNom, 0f);
             float nouvelleQuantite = nouvellesQuantitesMatierePremiere.get(matiereNom);
-
             float difference = nouvelleQuantite - ancienneQuantite;
 
+            // Obtenez le produit consommable associé
             ProduitConso produitConso = produitRepository.findProduitConsoByName(matiereNom);
 
             if (produitConso != null) {
+                // Ajuster le stock de ProduitConso en fonction de la différence
                 if (difference > 0) {
-                    // Si la différence est positive, besoin de plus de matière première
                     produitConso.setQuantite(produitConso.getQuantite() - difference * nouvelleQuantiteProduitFini);
                 } else if (difference < 0) {
-                    // Si la différence est négative, moins de matière première requise
-                    produitConso.setQuantite(produitConso.getQuantite() - difference * nouvelleQuantiteProduitFini);
+                    produitConso.setQuantite(produitConso.getQuantite() + Math.abs(difference) * nouvelleQuantiteProduitFini);
                 }
-                if(produitConso.getQuantite() < 0){
-                    throw new ResourceNotFoundException("Stock insuffisant pour le produit Consommable .");}
-                else {
-                    produitRepository.save(produitConso);
+
+                // Vérifiez pour éviter des valeurs négatives
+                if (produitConso.getQuantite() < 0) {
+                    throw new ResourceNotFoundException("Stock insuffisant pour la matière première: " + matiereNom);
                 }
-                }
+
+                produitRepository.save(produitConso);
+            }
+
+            // Ajuster Plan_Produit selon les nouvelles quantités
+            List<Plan_Produit> planProduits = planProduitRepository.findByMatierePremierName(matiereNom);
+
+            if (planProduits.isEmpty()) {
+                Plan_Produit newPlan = new Plan_Produit();
+                newPlan.setMatierePremierName(matiereNom);
+                newPlan.setQuantiteTotal(nouvelleQuantite * nouvelleQuantiteProduitFini);
+                newPlan.setProduitFini(existingProduitFini);
+                planProduitRepository.save(newPlan);
+            } else {
+                Plan_Produit planProduit = planProduits.get(0);
+                planProduit.setQuantiteTotal(nouvelleQuantite * nouvelleQuantiteProduitFini);
+                planProduitRepository.save(planProduit);
+            }
         }
 
-        // Mettre à jour le produit fini avec les nouvelles valeurs
-        existingProduitFini.setName(produitFini.getName());
+        // Mettre à jour le produit fini avec les nouvelles quantités et données
         existingProduitFini.setQuantite(nouvelleQuantiteProduitFini);
-        existingProduitFini.setEtat(produitFini.getEtat());
         existingProduitFini.setMatieresPremieres(produitFini.getMatieresPremieres());
+        existingProduitFini.setEtat(produitFini.getEtat());
 
+        // Sauvegarder les mises à jour du produit fini
         ProduitFini updatedProduitFini = produitRepository.save(existingProduitFini);
 
         return ResponseEntity.ok(updatedProduitFini);
-    }
-    @PutMapping("/conso/{id}")
-    public ResponseEntity<ProduitConso> updateProduitConso(@PathVariable(name = "id") Long id,
-                                                           @RequestBody ProduitConso produitConso) {
-        produitConso.setId(id);
-        // errors (ex: product not found)
-        ProduitConso existingProduitConso = (ProduitConso) produitRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("ProduitConso not found with id: " + id));
-
-        // Update fields
-        existingProduitConso.setDate(LocalDateTime.now());
-        existingProduitConso.setName(produitConso.getName());
-        existingProduitConso.setQuantite(produitConso.getQuantite());
-
-        ProduitConso updatedProduitConso = produitRepository.save(existingProduitConso);
-        return ResponseEntity.ok(updatedProduitConso);
     }
     private boolean checkStockSuffisant(ProduitFini produitFini) {
         for (MatierePremier matiere : produitFini.getMatieresPremieres()) {

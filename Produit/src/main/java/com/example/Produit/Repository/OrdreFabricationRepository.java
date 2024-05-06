@@ -9,4 +9,5 @@ import java.util.List;
 @RepositoryRestResource
 public interface OrdreFabricationRepository extends JpaRepository<OrdreFabrication, Long> {
     List<OrdreFabrication> findByIdmachine(Long machineId);
+    OrdreFabrication findByIdProduitFini(Long produitFiniId);
 }

@@ -79,4 +79,45 @@ public class OrdreFabricationController {
 
         return ResponseEntity.noContent().build();
     }
+    @PutMapping("/addRebut/{idProduitFini}/{quantite}")
+    public ResponseEntity<Void> addRebut(@PathVariable Long idProduitFini, @PathVariable int quantite) {
+        // Rechercher l'ordre de fabrication avec idProduitFini
+        OrdreFabrication ordreFabrication = ordreFabricationRepository.findByIdProduitFini(idProduitFini);
+
+        if (ordreFabrication == null) {
+            return ResponseEntity.notFound().build(); // si aucun ordre de fabrication trouvé
+        }
+
+        // Ajouter la quantité au quantiteRebut
+        ordreFabrication.setQuantiteRebut(ordreFabrication.getQuantiteRebut() + quantite);
+
+        ordreFabricationRepository.save(ordreFabrication);
+
+        return ResponseEntity.ok().build(); // retourner une réponse appropriée
+    }
+    @PutMapping("/updateRebut/{idProduitFini}/{nouvelleQuantite}/{ancienneQuantite}")
+    public ResponseEntity<Void> updateQuantiteRebut(
+            @PathVariable Long idProduitFini,
+            @PathVariable int nouvelleQuantite,
+            @PathVariable int ancienneQuantite
+    ) {
+        // Rechercher l'ordre de fabrication par ID du produit fini
+        OrdreFabrication ordreFabrication = ordreFabricationRepository.findByIdProduitFini(idProduitFini);
+
+        if (ordreFabrication == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Calculer la différence de quantités
+        int difference = nouvelleQuantite - ancienneQuantite;
+
+        // Mettre à jour la quantité de rebut
+        ordreFabrication.setQuantiteRebut(ordreFabrication.getQuantiteRebut() + difference);
+
+        // Sauvegarder l'ordre de fabrication mis à jour
+        ordreFabricationRepository.save(ordreFabrication);
+
+        return ResponseEntity.ok().build();
+    }
+
 }
