@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
+import java.util.List;
+
 @Entity
 @Data
 @NoArgsConstructor
@@ -16,9 +18,12 @@ public class consommation {
     @Id
     @GeneratedValue (strategy = GenerationType.IDENTITY)
     private Long id;
-    private String quantite;
-    private Long idProduit;
+
+    private Long idProduitFini;
     private Long idMachine;
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinColumn(name = "consommation_id")
+    private List<QuantiteMatiereConso> quantiteMatiereConso;
 
 
 }

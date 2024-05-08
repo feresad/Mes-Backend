@@ -33,10 +33,9 @@ public class ConsomController {
     }
     @PutMapping("/{id}")
     public consommation updateConsom(@PathVariable(name = "id") Long id, @RequestBody consommation consommation){
-        consommation.setId(id);
+        consommation = consomRepository.findById(id).get();
         return consomRepository.save(consommation);
     }
-    //get liste des consommation par id machine
     @GetMapping("/machine/{idMachine}")
     public Iterable<consommation> getConsomByMachine(@PathVariable(name = "idMachine") Long idMachine){
         return consomRepository.findByMachineId(idMachine);

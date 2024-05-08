@@ -3,13 +3,19 @@ package com.example.Produit.controller;
 
 import com.example.Produit.Repository.CommandeRepository;
 import com.example.Produit.Repository.OrdreFabricationRepository;
-import com.example.Produit.entity.Commande;
-import com.example.Produit.entity.OrdreFabrication;
+import com.example.Produit.Repository.Plan_ProduitRepository;
+import com.example.Produit.Repository.ProduitRepository;
+import com.example.Produit.entity.*;
+import com.example.consommation.entity.QuantiteMatiereConso;
+import com.example.consommation.entity.consommation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -20,6 +26,14 @@ public class OrdreFabricationController {
     private OrdreFabricationRepository ordreFabricationRepository;
     @Autowired
     private CommandeRepository commandeRepository;
+    @Autowired
+    private ProduitRepository produitRepository;
+    @Autowired
+    private Plan_ProduitRepository planProduitRepository;
+    @Autowired
+    private RestTemplate restTemplate;
+    @Value("${consommation-service.url}")
+    private String consoServiceUrl;
 
     @GetMapping("/all")
     public Iterable<OrdreFabrication> getAllOrdresFabrication() {
@@ -45,21 +59,79 @@ public class OrdreFabricationController {
         return ResponseEntity.ok(ordreFabrication);
     }
     @PutMapping("/{id}")
-    public ResponseEntity<OrdreFabrication> updateOrdreFabrication(@PathVariable Long id, @RequestBody OrdreFabrication ordreFabricationDetails) {
-        OrdreFabrication ordreFabrication = ordreFabricationRepository.findById(id)
+    public ResponseEntity<OrdreFabrication> updateOrdreFabrication(
+            @PathVariable Long id,
+            @RequestBody OrdreFabrication ordreFabricationDetails) {
+
+        OrdreFabrication existingOrdreFabrication = ordreFabricationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("OrdreFabrication not found with id: " + id));
 
-        ordreFabrication.setIdProduitFini(ordreFabricationDetails.getIdProduitFini());
-        ordreFabrication.setIdCommande(ordreFabricationDetails.getIdCommande());
-        ordreFabrication.setIdmachine(ordreFabricationDetails.getIdmachine());
-        ordreFabrication.setQuantite(ordreFabricationDetails.getQuantite());
-        ordreFabrication.setQuantiteRebut(ordreFabricationDetails.getQuantiteRebut());
-        ordreFabrication.setEtat(ordreFabricationDetails.getEtat());
-        ordreFabrication.setDateDebut(ordreFabricationDetails.getDateDebut());
-        ordreFabrication.setDateFin(ordreFabricationDetails.getDateFin());
+        // Mise à jour des propriétés de l'ordre de fabrication
+        existingOrdreFabrication.setIdProduitFini(ordreFabricationDetails.getIdProduitFini());
+        existingOrdreFabrication.setIdCommande(ordreFabricationDetails.getIdCommande());
+        existingOrdreFabrication.setIdmachine(ordreFabricationDetails.getIdmachine());
+        existingOrdreFabrication.setQuantite(ordreFabricationDetails.getQuantite());
+        existingOrdreFabrication.setQuantiteRebut(ordreFabricationDetails.getQuantiteRebut());
+        existingOrdreFabrication.setEtat(ordreFabricationDetails.getEtat());
+        existingOrdreFabrication.setDateDebut(ordreFabricationDetails.getDateDebut());
+        existingOrdreFabrication.setDateFin(ordreFabricationDetails.getDateFin());
 
-        OrdreFabrication updatedOrdreFabrication = ordreFabricationRepository.save(ordreFabrication);
+        OrdreFabrication updatedOrdreFabrication = ordreFabricationRepository.save(existingOrdreFabrication);
+
+        // Si l'état est 2, créer une consommation
+        if (updatedOrdreFabrication.getEtat() == 2) {
+            createConsommationForOrdreFabrication(updatedOrdreFabrication);
+        }
+
         return ResponseEntity.ok(updatedOrdreFabrication);
+    }
+
+    private void createConsommationForOrdreFabrication(OrdreFabrication ordreFabrication) {
+        consommation newConsommation = new consommation();
+        newConsommation.setIdProduitFini(ordreFabrication.getIdProduitFini());
+        newConsommation.setIdMachine(ordreFabrication.getIdmachine());
+
+        List<QuantiteMatiereConso> quantiteMatiereConsoList = new ArrayList<>();
+
+        // Obtenir le produit fini associé à l'ordre de fabrication
+        ProduitFini produitFini = (ProduitFini) produitRepository.findById(ordreFabrication.getIdProduitFini())
+                .orElseThrow(() -> new ResourceNotFoundException("ProduitFini not found with id: " + ordreFabrication.getIdProduitFini()));
+
+        // Si quantiteRebut est 0, utilisez les quantités des plans de produit
+        if (ordreFabrication.getQuantiteRebut() == 0) {
+            List<Plan_Produit> planProduits = planProduitRepository.findByProduitFiniId(ordreFabrication.getIdProduitFini());
+            for (Plan_Produit planProduit : planProduits) {
+                QuantiteMatiereConso qmc = new QuantiteMatiereConso();
+                qmc.setNomMatiere(planProduit.getMatierePremierName());
+                qmc.setQuantite(planProduit.getQuantiteTotal());
+                quantiteMatiereConsoList.add(qmc);
+            }
+        } else {
+            // Utilisez les quantités des matières premières multipliées par la quantité de rebut
+            for (MatierePremier matiere : produitFini.getMatieresPremieres()) {
+                QuantiteMatiereConso qmc = new QuantiteMatiereConso();
+                qmc.setNomMatiere(matiere.getName());
+
+                float quantiteRebut = matiere.getQuantite() * ordreFabrication.getQuantiteRebut();
+
+                // Ajoutez la quantité des plans de produit pour cette matière première
+                List<Plan_Produit> planProduits = planProduitRepository.findByMatierePremierName(matiere.getName());
+
+                if (!planProduits.isEmpty()) {
+                    Plan_Produit planProduit = planProduits.get(0);
+                    qmc.setQuantite(quantiteRebut + planProduit.getQuantiteTotal());
+                } else {
+                    qmc.setQuantite(quantiteRebut);
+                }
+
+                quantiteMatiereConsoList.add(qmc);
+            }
+        }
+
+        newConsommation.setQuantiteMatiereConso(quantiteMatiereConsoList);
+
+        String createConsommationUrl = consoServiceUrl + "/consommations/add";
+        restTemplate.postForEntity(createConsommationUrl, newConsommation, consommation.class);
     }
 
 
@@ -73,8 +145,10 @@ public class OrdreFabricationController {
 
         // Mettre à jour l'état de tous les ordres de fabrication liés à la machine
         for (OrdreFabrication ordre : ordres) {
-            ordre.setEtat(3); // 3 indiquant une panne de machine
-            ordreFabricationRepository.save(ordre);
+            if (ordre.getEtat() != 2) {
+                ordre.setEtat(3); // 3 indiquant une panne de machine
+                ordreFabricationRepository.save(ordre);
+            }
         }
 
         return ResponseEntity.noContent().build();
