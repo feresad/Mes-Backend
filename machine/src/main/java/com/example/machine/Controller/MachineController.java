@@ -167,5 +167,17 @@ public class MachineController {
             return Collections.emptyList();
         }
     }
+    @GetMapping("/statistiques")
+    public Map<String, Long> getMachineStatistiques() {
+        Map<String, Long> statistiques = new HashMap<>();
+        long totalMachines = MachineRepository.count();
+        long machinesEnMarche = MachineRepository.findByEtat(true).spliterator().getExactSizeIfKnown();
+        long machinesEnPanne = MachineRepository.findByEtat(false).spliterator().getExactSizeIfKnown();
 
+        statistiques.put("total", totalMachines);
+        statistiques.put("enMarche", machinesEnMarche);
+        statistiques.put("enPanne", machinesEnPanne);
+
+        return statistiques;
+    }
 }

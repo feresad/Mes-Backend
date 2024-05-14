@@ -8,13 +8,13 @@ public class UserInfoResponse {
     private Long id;
     private String username;
     private String email;
-    private List<Role> roles;
+    private String role;
 
-    public UserInfoResponse(Long id, String username, String email, List<Role> roles) {
+    public UserInfoResponse(Long id, String username, String email, String role) {
         this.id = id;
         this.username = username;
         this.email = email;
-        this.roles = roles;
+        this.role = role;
     }
 
     public Long getId() {
@@ -41,12 +41,8 @@ public class UserInfoResponse {
         this.username = username;
     }
 
-    public List<Role> getRoles() {
-        return roles;
-    }
-
-    public void setRoles(List<Role> roles) {
-        this.roles = roles;
+    public String getRole() {
+        return role;
     }
 
     public static class Role {

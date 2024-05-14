@@ -15,6 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -53,16 +54,17 @@ public class AuthController {
         String jwt = jwtUtils.generateTokenFromUsername(userDetails.getUsername());
 
         // Récupérer les rôles de l'utilisateur
-        List<String> roles = userDetails.getAuthorities().stream()
-                .map(item -> item.getAuthority())
-                .collect(Collectors.toList());
+        String role = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .findFirst()
+                .orElse("USER");
 
         // Construire et renvoyer la réponse contenant le token et les informations de l'utilisateur
         Map<String, Object> response = new HashMap<>();
         response.put("id", userDetails.getId());
         response.put("username", userDetails.getUsername());
         response.put("email", userDetails.getEmail());
-        response.put("roles", roles);
+        response.put("role", role);
         response.put("token", jwt); // Inclure le token JWT ici
 
         return ResponseEntity.ok(response);
@@ -78,41 +80,19 @@ public class AuthController {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
         }
 
-        // Create new user's account
+        // Créez un nouvel utilisateur avec un seul rôle
         User user = new User(signUpRequest.getUsername(),
                 signUpRequest.getEmail(),
                 encoder.encode(signUpRequest.getPassword()));
 
-        Set<String> strRoles = signUpRequest.getRole();
-        Set<Role> roles = new HashSet<>();
+        Role role = roleRepository.findByName(signUpRequest.getRole())
+                .orElseThrow(() -> new RuntimeException("Role not found"));
 
-        if (strRoles == null) {
-            Role userRole = roleRepository.findByName("USER")
-                    .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-            roles.add(userRole);
-        } else {
-            strRoles.forEach(role -> {
-                switch (role) {
-                    case "ADMIN":
-                        Role adminRole = roleRepository.findByName("ADMIN")
-                                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                        roles.add(adminRole);
-
-                        break;
-                    case "USER":
-                        Role userRole = roleRepository.findByName("USER")
-                                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                        roles.add(userRole);
-                }
-            });
-        }
-
-        user.setRoles(roles);
+        user.setRole(role);
         userRepository.save(user);
 
         return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
     }
-
     @PostMapping("/signout")
     public ResponseEntity<?> logoutUser() {
         ResponseCookie cookie = jwtUtils.getCleanJwtCookie();
@@ -161,7 +141,7 @@ public class AuthController {
     }
     @GetMapping("/users/admin")
     public List<User> getAllAdminUsers() {
-        return userRepository.findByRolesName("ADMIN");
+        return userRepository.findByRoleName("ADMIN");
     }
     @PutMapping("/update/{username}")
     public ResponseEntity<?> updateUser(@PathVariable String username, @RequestBody User updatedUserDetails) {
@@ -172,7 +152,9 @@ public class AuthController {
 
             user.setUsername(updatedUserDetails.getUsername());
             user.setEmail(updatedUserDetails.getEmail());
-            user.setPassword(encoder.encode(updatedUserDetails.getPassword()));
+            if (updatedUserDetails.getPassword() != null && !updatedUserDetails.getPassword().isEmpty()) {
+                user.setPassword(encoder.encode(updatedUserDetails.getPassword()));
+            }
 
             userRepository.save(user);
 

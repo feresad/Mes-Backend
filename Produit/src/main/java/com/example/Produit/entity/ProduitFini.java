@@ -2,10 +2,12 @@ package com.example.Produit.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 @Entity
+@Data
 @DiscriminatorValue("Fini")
 public class ProduitFini extends Produit{
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)

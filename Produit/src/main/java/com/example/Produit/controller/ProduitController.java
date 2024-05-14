@@ -10,8 +10,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -45,7 +48,11 @@ public class ProduitController {
     public ResponseEntity<Void> deleteProduit(@PathVariable(name = "id") Long id) {
         Produit produit = produitRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Produit not found with id: " + id));
-
+        if(produit instanceof ProduitFini) {
+            ProduitFini produitFini = (ProduitFini) produit;
+            List<Plan_Produit> planProduits = planProduitRepository.findByProduitFiniId(id);
+            planProduitRepository.deleteAll(planProduits);
+        }
         produitRepository.delete(produit);
 
         return ResponseEntity.noContent().build(); // Renvoie une réponse vide avec un statut 204
@@ -60,13 +67,12 @@ public class ProduitController {
         return produitRepository.findById(id).get();
     }
     @PostMapping("/addFini")
-    public ResponseEntity<ProduitFini> addProduitFini(@RequestBody ProduitFini produitFini) {
+    public ResponseEntity<ProduitFini> addProduitFini(@RequestBody ProduitFini produitFini){
         // Vérifier si le stock est suffisant
         boolean stockSuffisant = checkStockSuffisant(produitFini);
         if (!stockSuffisant) {
             throw new ResourceNotFoundException("Stock insuffisant pour le produit fini.");
         }
-
         produitFini.setEtat(0);
 
         // Enregistrer le produit fini

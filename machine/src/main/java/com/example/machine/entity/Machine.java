@@ -26,4 +26,5 @@ public class Machine {
     private Long panneId;
     private String username;
     private LocalDateTime date;
+
 }
