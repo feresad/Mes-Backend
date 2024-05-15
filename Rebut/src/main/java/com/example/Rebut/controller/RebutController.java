@@ -81,4 +81,8 @@ public class RebutController {
         return rebutRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Rebut not found with id: " + id));
     }
+    @GetMapping("/produit/{idProduit}")
+    public Iterable<Rebut> getRebutByProduit(@PathVariable(name = "idProduit") Long idProduit){
+        return rebutRepository.findByProduitId(idProduit);
+    }
 }

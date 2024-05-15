@@ -8,9 +8,9 @@ public class UserInfoResponse {
     private Long id;
     private String username;
     private String email;
-    private String role;
+    private Role role;
 
-    public UserInfoResponse(Long id, String username, String email, String role) {
+    public UserInfoResponse(Long id, String username, String email, Role role) {
         this.id = id;
         this.username = username;
         this.email = email;
@@ -42,7 +42,7 @@ public class UserInfoResponse {
     }
 
     public String getRole() {
-        return role;
+        return role.getName();
     }
 
     public static class Role {

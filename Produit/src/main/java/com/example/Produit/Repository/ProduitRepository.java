@@ -24,4 +24,5 @@ public interface ProduitRepository extends JpaRepository<Produit,Long> {
     public ProduitConso findProduitConsoByName(@Param("name") String name);
 
 
+
 }

@@ -3,6 +3,7 @@ package com.example.Produit.controller;
 import com.example.Produit.Repository.CommandeRepository;
 import com.example.Produit.Repository.Plan_ProduitRepository;
 import com.example.Produit.Repository.ProduitRepository;
+import com.example.Produit.Repository.Produit_fini_Repository;
 import com.example.Produit.entity.*;
 
 import org.hibernate.Hibernate;
@@ -29,6 +30,8 @@ public class ProduitController {
     private CommandeRepository commandeRepository;
     @Autowired
     private Plan_ProduitRepository planProduitRepository;
+    @Autowired
+    private Produit_fini_Repository produitFiniRepository;
 
 
     @GetMapping("/all")
@@ -198,6 +201,7 @@ public class ProduitController {
         }
 
         // Mettre à jour le produit fini avec les nouvelles quantités et données
+        existingProduitFini.setName(produitFini.getName());
         existingProduitFini.setQuantite(nouvelleQuantiteProduitFini);
         existingProduitFini.setMatieresPremieres(produitFini.getMatieresPremieres());
         existingProduitFini.setEtat(produitFini.getEtat());
@@ -222,5 +226,19 @@ public class ProduitController {
 
         return true; // Stock suffisant
     }
+    @GetMapping("/statistiques")
+    public Map<String, Long> getProduitFiniStatistiques() {
+        Map<String, Long> statistiques = new HashMap<>();
+        long totalProduitsFini = produitFiniRepository.count();
+        long produitsFiniAucun = produitFiniRepository.countByEtat(0);
+        long produitsFiniEnCours = produitFiniRepository.countByEtat(1);
+        long produitsFiniTermine = produitFiniRepository.countByEtat(2);
 
+        statistiques.put("total", totalProduitsFini);
+        statistiques.put("Aucun traitement", produitsFiniAucun);
+        statistiques.put("enCours", produitsFiniEnCours);
+        statistiques.put("terminer",produitsFiniTermine);
+
+        return statistiques;
+    }
 }

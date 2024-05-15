@@ -69,6 +69,7 @@ public class MachineController {
     public Machine updateMachine(@PathVariable(name = "id") Long id, @RequestBody Machine machine){
         Optional<Machine> optionalMachine = MachineRepository.findById(id);
         Machine machineexistant = MachineRepository.findById(id).get();
+        machineexistant.setName(machine.getName());
         if(optionalMachine.isPresent()) {
             Machine existingMachine = optionalMachine.get();
             boolean previousState = existingMachine.isEtat(); // Obtenez l'état précédent
@@ -163,10 +164,12 @@ public class MachineController {
             }
             return adminEmails;
         } else {
-            // Gérer les erreurs
+            // Gérer les erreurs de désérialisation ou de réponse de l'API
+            System.err.println("Erreur lors de la récupération des utilisateurs admin : " + response.getStatusCode());
             return Collections.emptyList();
         }
     }
+
     @GetMapping("/statistiques")
     public Map<String, Long> getMachineStatistiques() {
         Map<String, Long> statistiques = new HashMap<>();

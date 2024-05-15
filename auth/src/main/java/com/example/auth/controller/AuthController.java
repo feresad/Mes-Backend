@@ -53,7 +53,7 @@ public class AuthController {
         // Générer le token JWT
         String jwt = jwtUtils.generateTokenFromUsername(userDetails.getUsername());
 
-        // Récupérer les rôles de l'utilisateur
+        // Récupérer le rôle de l'utilisateur
         String role = userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .findFirst()
@@ -144,26 +144,48 @@ public class AuthController {
         return userRepository.findByRoleName("ADMIN");
     }
     @PutMapping("/update/{username}")
-    public ResponseEntity<?> updateUser(@PathVariable String username, @RequestBody User updatedUserDetails) {
+    public ResponseEntity<?> updateUser(@PathVariable String username, @Valid @RequestBody UpdateUserRequest updateUserRequest) {
         Optional<User> userOptional = userRepository.findByUsername(username);
 
         if (userOptional.isPresent()) {
             User user = userOptional.get();
 
-            user.setUsername(updatedUserDetails.getUsername());
-            user.setEmail(updatedUserDetails.getEmail());
-            if (updatedUserDetails.getPassword() != null && !updatedUserDetails.getPassword().isEmpty()) {
-                user.setPassword(encoder.encode(updatedUserDetails.getPassword()));
+            // Vérifier si le nouvel email est déjà utilisé par un autre utilisateur
+            if (!user.getEmail().equals(updateUserRequest.getEmail()) && userRepository.existsByEmail(updateUserRequest.getEmail())) {
+                return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
+            }
+
+            // Vérifier si le nouvel username est différent de l'existant
+            if (!user.getUsername().equals(updateUserRequest.getUsername())) {
+                // Vérifier si le nouvel username est déjà utilisé par un autre utilisateur
+                if (userRepository.existsByUsername(updateUserRequest.getUsername())) {
+                    return ResponseEntity.badRequest().body(new MessageResponse("Error: Username is already taken!"));
+                }
+                // Mettre à jour le nom d'utilisateur
+                user.setUsername(updateUserRequest.getUsername());
+            }
+
+            user.setEmail(updateUserRequest.getEmail());
+
+            // Vérifier si un nouveau mot de passe a été fourni
+            if (updateUserRequest.getPassword() != null && !updateUserRequest.getPassword().isEmpty()) {
+                user.setPassword(encoder.encode(updateUserRequest.getPassword()));
             }
 
             userRepository.save(user);
+            String jwt = jwtUtils.generateTokenFromUsername(user.getUsername());
 
-            Map<String, String> response = new HashMap<>();
-            response.put("message", "Utilisateur mis à jour avec succès");
+            // Renvoyer le nouveau token JWT en tant que réponse au frontend
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", user.getId());
+            response.put("username", user.getUsername());
+            response.put("email", user.getEmail());
+            response.put("role", user.getRole().getName());
+            response.put("token", jwt);
 
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(new MessageResponse("User updated successfully"));
         } else {
-            return ResponseEntity.status(404).body("Utilisateur non trouvé");
+            return ResponseEntity.notFound().build();
         }
     }
     @GetMapping("/search")
