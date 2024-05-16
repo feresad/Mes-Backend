@@ -31,6 +31,7 @@ public class RebutController {
         rebut.setDate(LocalDateTime.now());
         Rebut savedRebut = rebutRepository.save(rebut);
 
+
         // Envoi de la requête au microservice "Produit"
         String produitService = produitServiceUrl +"/ordreFabrication/addRebut/"
                 + rebut.getIdProduitFini() + "/"

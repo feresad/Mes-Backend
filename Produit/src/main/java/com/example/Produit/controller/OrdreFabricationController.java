@@ -3,7 +3,6 @@ package com.example.Produit.controller;
 
 import com.example.Produit.Repository.CommandeRepository;
 import com.example.Produit.Repository.OrdreFabricationRepository;
-import com.example.Produit.Repository.Plan_ProduitRepository;
 import com.example.Produit.Repository.ProduitRepository;
 import com.example.Produit.entity.*;
 import com.example.consommation.entity.QuantiteMatiereConso;
@@ -28,8 +27,6 @@ public class OrdreFabricationController {
     private CommandeRepository commandeRepository;
     @Autowired
     private ProduitRepository produitRepository;
-    @Autowired
-    private Plan_ProduitRepository planProduitRepository;
     @Autowired
     private RestTemplate restTemplate;
     @Value("${consommation-service.url}")
@@ -97,33 +94,21 @@ public class OrdreFabricationController {
         ProduitFini produitFini = (ProduitFini) produitRepository.findById(ordreFabrication.getIdProduitFini())
                 .orElseThrow(() -> new ResourceNotFoundException("ProduitFini not found with id: " + ordreFabrication.getIdProduitFini()));
 
-        // Si quantiteRebut est 0, utilisez les quantités des plans de produit
+        // Si quantiteRebut est 0, utilisez les quantités des matières premières multipliées par la quantité du produit fini
         if (ordreFabrication.getQuantiteRebut() == 0) {
-            List<Plan_Produit> planProduits = planProduitRepository.findByProduitFiniId(ordreFabrication.getIdProduitFini());
-            for (Plan_Produit planProduit : planProduits) {
-                QuantiteMatiereConso qmc = new QuantiteMatiereConso();
-                qmc.setNomMatiere(planProduit.getMatierePremierName());
-                qmc.setQuantite(planProduit.getQuantiteTotal());
-                quantiteMatiereConsoList.add(qmc);
-            }
-        } else {
-            // Utilisez les quantités des matières premières multipliées par la quantité de rebut
             for (MatierePremier matiere : produitFini.getMatieresPremieres()) {
                 QuantiteMatiereConso qmc = new QuantiteMatiereConso();
                 qmc.setNomMatiere(matiere.getName());
-
-                float quantiteRebut = matiere.getQuantite() * ordreFabrication.getQuantiteRebut();
-
-                // Ajoutez la quantité des plans de produit pour cette matière première
-                List<Plan_Produit> planProduits = planProduitRepository.findByMatierePremierName(matiere.getName());
-
-                if (!planProduits.isEmpty()) {
-                    Plan_Produit planProduit = planProduits.get(0);
-                    qmc.setQuantite(quantiteRebut + planProduit.getQuantiteTotal());
-                } else {
-                    qmc.setQuantite(quantiteRebut);
-                }
-
+                qmc.setQuantite(matiere.getQuantite() * ordreFabrication.getQuantite());
+                quantiteMatiereConsoList.add(qmc);
+            }
+        } else { // Si l'ordre de fabrication est terminé, ajoutez également les quantités de rebut
+            for (MatierePremier matiere : produitFini.getMatieresPremieres()) {
+                QuantiteMatiereConso qmc = new QuantiteMatiereConso();
+                qmc.setNomMatiere(matiere.getName());
+                // Calculer la quantité totale en ajoutant la quantité normale et la quantité de rebut
+                qmc.setQuantite((matiere.getQuantite() * ordreFabrication.getQuantite()) +
+                        (matiere.getQuantite() * ordreFabrication.getQuantiteRebut()));
                 quantiteMatiereConsoList.add(qmc);
             }
         }
@@ -164,6 +149,24 @@ public class OrdreFabricationController {
 
         // Ajouter la quantité au quantiteRebut
         ordreFabrication.setQuantiteRebut(ordreFabrication.getQuantiteRebut() + quantite);
+        if (quantite != 0) {
+            // Récupération du produit fini associé à l'ordre de fabrication
+            ProduitFini produitFini = (ProduitFini) produitRepository.findById(idProduitFini)
+                    .orElseThrow(() -> new ResourceNotFoundException("ProduitFini not found with id: " + idProduitFini));
+
+            // Calcul de la quantité de matières premières des rebut
+            List<MatierePremier> matieresPremieres = produitFini.getMatieresPremieres();
+            for (MatierePremier matiere : matieresPremieres) {
+                // Soustraction de la quantité de matière première des rebut du ProduitConso
+                ProduitConso produitConso = produitRepository.findProduitConsoByName(matiere.getName());
+                if (produitConso != null) {
+                    float quantiteRequise = matiere.getQuantite() * quantite;
+
+                    produitConso.setQuantite(produitConso.getQuantite() - quantiteRequise);
+                    produitRepository.save(produitConso);
+                }
+            }
+        }
 
         ordreFabricationRepository.save(ordreFabrication);
 
@@ -190,6 +193,24 @@ public class OrdreFabricationController {
 
         // Sauvegarder l'ordre de fabrication mis à jour
         ordreFabricationRepository.save(ordreFabrication);
+        if (nouvelleQuantite != 0) {
+            // Récupération du produit fini associé à l'ordre de fabrication
+            ProduitFini produitFini = (ProduitFini) produitRepository.findById(idProduitFini)
+                    .orElseThrow(() -> new ResourceNotFoundException("ProduitFini not found with id: " + idProduitFini));
+
+            // Calcul de la quantité de matières premières des rebut
+            List<MatierePremier> matieresPremieres = produitFini.getMatieresPremieres();
+            for (MatierePremier matiere : matieresPremieres) {
+                // Soustraction de la quantité de matière première des rebut du ProduitConso
+                ProduitConso produitConso = produitRepository.findProduitConsoByName(matiere.getName());
+                if (produitConso != null) {
+                    float quantiteRequise = matiere.getQuantite() * nouvelleQuantite;
+
+                    produitConso.setQuantite(produitConso.getQuantite() - quantiteRequise);
+                    produitRepository.save(produitConso);
+                }
+            }
+        }
 
         return ResponseEntity.ok().build();
     }

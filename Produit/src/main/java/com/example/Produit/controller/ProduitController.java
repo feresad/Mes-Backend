@@ -1,24 +1,19 @@
 package com.example.Produit.controller;
 
 import com.example.Produit.Repository.CommandeRepository;
-import com.example.Produit.Repository.Plan_ProduitRepository;
 import com.example.Produit.Repository.ProduitRepository;
 import com.example.Produit.Repository.Produit_fini_Repository;
 import com.example.Produit.entity.*;
 
-import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -28,8 +23,6 @@ public class ProduitController {
     private ProduitRepository produitRepository;
     @Autowired
     private CommandeRepository commandeRepository;
-    @Autowired
-    private Plan_ProduitRepository planProduitRepository;
     @Autowired
     private Produit_fini_Repository produitFiniRepository;
 
@@ -51,14 +44,9 @@ public class ProduitController {
     public ResponseEntity<Void> deleteProduit(@PathVariable(name = "id") Long id) {
         Produit produit = produitRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Produit not found with id: " + id));
-        if(produit instanceof ProduitFini) {
-            ProduitFini produitFini = (ProduitFini) produit;
-            List<Plan_Produit> planProduits = planProduitRepository.findByProduitFiniId(id);
-            planProduitRepository.deleteAll(planProduits);
-        }
         produitRepository.delete(produit);
 
-        return ResponseEntity.noContent().build(); // Renvoie une réponse vide avec un statut 204
+        return ResponseEntity.noContent().build();
     }
     @GetMapping("/produitConso")
     public List<ProduitConso> getProduitConso(){
@@ -87,19 +75,7 @@ public class ProduitController {
         commande.setQuantite((int) savedProduitFini.getQuantite());
         commandeRepository.save(commande);
 
-        // Mettre à jour Plan_Produit avec les quantités nécessaires
-        for (MatierePremier matiere : produitFini.getMatieresPremieres()) {
-            float quantiteRequise = matiere.getQuantite() * produitFini.getQuantite();
-
-            Plan_Produit planProduit = new Plan_Produit();
-            planProduit.setMatierePremierName(matiere.getName());
-            planProduit.setQuantiteTotal(quantiteRequise);
-            planProduit.setProduitFini(savedProduitFini);
-
-            planProduitRepository.save(planProduit);
-        }
-
-        // Soustraire les quantités des matières premières du stock
+        // Soustraire les quantités des matières premières du ProduitConso
         soustraireQuantites(savedProduitFini);
 
         return ResponseEntity.ok(savedProduitFini);
@@ -182,21 +158,6 @@ public class ProduitController {
                 }
 
                 produitRepository.save(produitConso);
-            }
-
-            // Ajuster Plan_Produit selon les nouvelles quantités
-            List<Plan_Produit> planProduits = planProduitRepository.findByMatierePremierName(matiereNom);
-
-            if (planProduits.isEmpty()) {
-                Plan_Produit newPlan = new Plan_Produit();
-                newPlan.setMatierePremierName(matiereNom);
-                newPlan.setQuantiteTotal(nouvelleQuantite * nouvelleQuantiteProduitFini);
-                newPlan.setProduitFini(existingProduitFini);
-                planProduitRepository.save(newPlan);
-            } else {
-                Plan_Produit planProduit = planProduits.get(0);
-                planProduit.setQuantiteTotal(nouvelleQuantite * nouvelleQuantiteProduitFini);
-                planProduitRepository.save(planProduit);
             }
         }
 
