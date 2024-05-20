@@ -72,6 +72,10 @@
 
     <div class="info">
         <p><strong>Machine :</strong> <span th:text="${machineName}"></span></p>
+        <p><strong>Pannes : </strong>
+        <ul>
+            <li th:each="panne : ${pannes}" th:text="${panne.name}"></li>
+        </ul></p>
         <p><strong>Date </strong> <span th:text="${formattedDate}"></span></p>
         <p><strong>Heure :</strong> <span th:text="${formattedTime}"></span></p>
     </div>

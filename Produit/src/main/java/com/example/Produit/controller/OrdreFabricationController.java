@@ -46,6 +46,9 @@ public class OrdreFabricationController {
         ordreFabrication.setIdCommande(existanceCommande.getId());
         ordreFabrication.setIdProduitFini(existanceCommande.getIdProduitFini());
         ordreFabrication.setQuantite(existanceCommande.getQuantite());
+        if (ordreFabrication.getEtat() == 2) {
+            createConsommationForOrdreFabrication(ordreFabrication);
+        }
         return ordreFabricationRepository.save(ordreFabrication);
     }
 

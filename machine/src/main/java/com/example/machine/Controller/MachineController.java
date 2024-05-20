@@ -6,6 +6,9 @@ import com.example.machine.entity.Panne;
 import com.example.machine.entity.UserInfoResponse;
 import com.example.machine.repository.MachineRepository;
 import com.example.machine.repository.PanneRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
+import jakarta.transaction.Transactional;
 import org.apache.catalina.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -24,6 +27,7 @@ import org.thymeleaf.TemplateEngine;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 @RestController
@@ -52,7 +56,6 @@ public class MachineController {
     @PostMapping("/add")
     public Machine addMachine(@RequestBody Machine machine){
         machine.setEtat(true);
-        machine.setPanneId(null);
         machine.setDate(LocalDateTime.now());
         return MachineRepository.save(machine);
     }
@@ -70,17 +73,32 @@ public class MachineController {
         Optional<Machine> optionalMachine = MachineRepository.findById(id);
         Machine machineexistant = MachineRepository.findById(id).get();
         machineexistant.setName(machine.getName());
+
         if(optionalMachine.isPresent()) {
             Machine existingMachine = optionalMachine.get();
             boolean previousState = existingMachine.isEtat(); // Obtenez l'état précédent
             existingMachine.setEtat(machine.isEtat());
             existingMachine.setDate(LocalDateTime.now());
+            if (!existingMachine.isEtat() && machine.isEtat()) {
+                existingMachine.getPannes().clear();
+            }
             Machine updatedMachine = MachineRepository.save(existingMachine);
+
             // Vérifiez si l'état a changé de true à false
             if (previousState && !machine.isEtat()) {
-                Long machineId = existingMachine.getId();
+                if (machine.getPannes() != null) {
+                    Set<Panne> pannes = new HashSet<>();
+                    for (Panne panneInput : machine.getPannes()) {
+                        // Fetch the actual Panne entity from the database
+                        Optional<Panne> panneOptional = panneRepository.findById(panneInput.getId());
+                        if (panneOptional.isPresent()) {
+                            pannes.add(panneOptional.get());
+                        }
+                    }
+                    existingMachine.setPannes(pannes);
+                }
                 // Appel REST vers le service Produit pour mettre à jour l'état de l'ordre de fabrication
-                String updateOrdreFabricationUrl = produitServiceUrl + "/ordreFabrication/updateByMachineId/" + machineId;
+               String updateOrdreFabricationUrl = produitServiceUrl + "/ordreFabrication/updateByMachineId/" + id;
                 try {
                     restTemplate.put(updateOrdreFabricationUrl, null);
                 } catch (HttpClientErrorException e) {
@@ -95,7 +113,7 @@ public class MachineController {
                 String subject = "Panne de machine " + updatedMachine.getName();
 
                 for (String adminEmail : adminEmails) {
-                    emailService.sendMachinePanneEmail(adminEmail, subject, updatedMachine.getName(), formattedDate, formattedTime);
+                    emailService.sendMachinePanneEmail(adminEmail, subject, updatedMachine.getName(), formattedDate, formattedTime, updatedMachine.getPannes());
                 }
             }
             return updatedMachine;
@@ -104,28 +122,30 @@ public class MachineController {
             return null;
         }
     }
-    @PutMapping("/add-panne/{machineId}/{panneId}")
-    public ResponseEntity<Machine> addPanneToMachine(
+    @PutMapping("/add-panne/{machineId}")
+    public ResponseEntity<Machine> addPannesToMachine(
             @PathVariable("machineId") Long machineId,
-            @PathVariable("panneId") Long panneId,
-            @RequestBody Map<String, Object> requestData // Pour accepter des données supplémentaires
+            @RequestBody Map<String, Object> requestData
     ) {
         Optional<Machine> optionalMachine = MachineRepository.findById(machineId);
-        Optional<Panne> optionalPanne = panneRepository.findById(panneId);
 
-        if (optionalMachine.isPresent() && optionalPanne.isPresent()) {
+        if (optionalMachine.isPresent()) {
             Machine machine = optionalMachine.get();
-            machine.setPanneId(panneId);
 
-            // Récupérer le nom d'utilisateur à partir des données du corps
+            // Extract panneIds and username
+            List<Long> panneIds = (List<Long>) requestData.get("panneIds");
             String username = (String) requestData.get("username");
-            machine.setUsername(username); // Stocke le nom d'utilisateur
 
-            MachineRepository.save(machine);
+            // Fetch Pannes
+            Set<Panne> pannes = panneRepository.findAllById(panneIds).stream().collect(Collectors.toSet());
+
+            machine.getPannes().addAll(pannes);
+            machine.setUsername(username);
+            machine = MachineRepository.save(machine);
 
             return ResponseEntity.ok(machine);
         } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            return ResponseEntity.notFound().build();
         }
     }
     @GetMapping("/count")

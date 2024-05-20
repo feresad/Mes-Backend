@@ -1,4 +1,5 @@
 package com.example.machine.Service;
+import com.example.machine.entity.Panne;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -8,6 +9,8 @@ import org.thymeleaf.context.Context;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+
+import java.util.Set;
 
 
 @Service
@@ -21,7 +24,8 @@ public class EmailService {
     public void sendMachinePanneEmail(String toEmail, String subject,
                                       String machineName,
                                       String formattedDate,
-                                      String formattedTime) {
+                                      String formattedTime,
+                                      Set<Panne> pannes) {
         MimeMessage message = mailSender.createMimeMessage();
 
         try {
@@ -34,6 +38,7 @@ public class EmailService {
             context.setVariable("machineName", machineName);
             context.setVariable("formattedDate", formattedDate);
             context.setVariable("formattedTime", formattedTime);
+            context.setVariable("pannes", pannes);
 
             String emailContent = templateEngine.process("machine_panne_email", context);
             helper.setText(emailContent, true);

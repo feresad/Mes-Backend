@@ -70,7 +70,7 @@ public class RebutController {
 
         restTemplate.put(produitService, null);
 
-        // Mettre à jour le rebut avec les nouvelles valeurs
+
         existingRebut.setIdMachine(rebutDetails.getIdMachine());
         existingRebut.setQuantite(nouvelleQuantite);
         existingRebut.setDate(LocalDateTime.now());

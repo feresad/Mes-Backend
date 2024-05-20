@@ -22,9 +22,20 @@ public class Machine {
     private String name;
     private boolean etat;
 
-    @Column(name = "panne_id")
-    private Long panneId;
     private String username;
     private LocalDateTime date;
+    @ManyToMany
+    @JoinTable(
+            name = "machine_panne",
+            joinColumns = @JoinColumn(name = "machine_id"),
+            inverseJoinColumns = @JoinColumn(name = "panne_id")
+    )
+    private Set<Panne> pannes = new HashSet<>();
 
+    @PreUpdate
+    public void preUpdate() {
+        if (this.isEtat()) {
+            this.pannes.clear();
+        }
+    }
 }

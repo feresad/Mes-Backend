@@ -5,6 +5,7 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/Backend.iml" filepath="$PROJECT_DIR$/.idea/Backend.iml" />
       <module fileurl="file://$PROJECT_DIR$/Produit/Produit.iml" filepath="$PROJECT_DIR$/Produit/Produit.iml" />
       <module fileurl="file://$PROJECT_DIR$/auth/auth.iml" filepath="$PROJECT_DIR$/auth/auth.iml" />
+      <module fileurl="file://$PROJECT_DIR$/machine/machine.iml" filepath="$PROJECT_DIR$/machine/machine.iml" />
     </modules>
   </component>
 </project>
