@@ -70,7 +70,7 @@ public class RebutController {
 
         restTemplate.put(produitService, null);
 
-
+        existingRebut.setIdProduitFini(rebutDetails.getIdProduitFini());
         existingRebut.setIdMachine(rebutDetails.getIdMachine());
         existingRebut.setQuantite(nouvelleQuantite);
         existingRebut.setDate(LocalDateTime.now());

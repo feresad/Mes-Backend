@@ -16,8 +16,8 @@ import java.util.List;
 public interface MachineRepository extends JpaRepository<Machine,Long>{
     @Query("select m from Machine m where m.etat = ?1")
     public Iterable<Machine> findByEtat(boolean etat);
-    @Query("select m from Machine m where m.name like %?1%")
-    public Iterable<Machine> searchMachineByName(String nom);
+    @Query("SELECT m FROM Machine m WHERE m.name LIKE %:nom%")
+    public Iterable<Machine> searchMachineByName(@Param("nom") String nom);
     List<Machine> findByEtatFalse();
     List<Machine> findByEtatFalse(Sort sort);
 

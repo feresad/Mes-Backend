@@ -110,7 +110,7 @@ public class MachineController {
                 String formattedTime = updatedMachine.getDate().format(timeFormatter);
 
                 List<String> adminEmails = getAllAdminEmails();
-                String subject = "Panne de machine " + updatedMachine.getName();
+                String subject = "Panne de machine: " + updatedMachine.getName();
 
                 for (String adminEmail : adminEmails) {
                     emailService.sendMachinePanneEmail(adminEmail, subject, updatedMachine.getName(), formattedDate, formattedTime, updatedMachine.getPannes());
