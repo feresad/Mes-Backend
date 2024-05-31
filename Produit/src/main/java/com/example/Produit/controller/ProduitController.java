@@ -4,7 +4,9 @@ import com.example.Produit.Repository.CommandeRepository;
 import com.example.Produit.Repository.ProduitRepository;
 import com.example.Produit.Repository.Produit_fini_Repository;
 import com.example.Produit.entity.*;
+import com.example.Rebut.Repository.RebutRepository;
 
+import com.example.Rebut.entity.Rebut;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.http.ResponseEntity;
@@ -25,7 +27,6 @@ public class ProduitController {
     private CommandeRepository commandeRepository;
     @Autowired
     private Produit_fini_Repository produitFiniRepository;
-
 
     @GetMapping("/all")
     public Iterable<Produit> getAllProduits(){
@@ -73,6 +74,7 @@ public class ProduitController {
         Commande commande = new Commande();
         commande.setIdProduitFini(savedProduitFini.getId());
         commande.setQuantite((int) savedProduitFini.getQuantite());
+        commande.setQuantiteRestante((int) savedProduitFini.getQuantite());
         commandeRepository.save(commande);
 
         // Soustraire les quantités des matières premières du ProduitConso
@@ -167,6 +169,15 @@ public class ProduitController {
         existingProduitFini.setMatieresPremieres(produitFini.getMatieresPremieres());
         existingProduitFini.setEtat(produitFini.getEtat());
 
+        Commande commande = commandeRepository.findByIdProduitFini(existingProduitFini.getId());
+        // Mise à jour de la quantité de la commande
+        commande.setQuantite((int) nouvelleQuantiteProduitFini);
+
+        // Ajuster la quantité restante
+        commande.setQuantiteRestante(commande.getQuantiteRestante() + (int) differenceProduitFini);
+
+        // Sauvegarder les mises à jour de la commande
+        commandeRepository.save(commande);
         // Sauvegarder les mises à jour du produit fini
         ProduitFini updatedProduitFini = produitRepository.save(existingProduitFini);
 
@@ -187,6 +198,21 @@ public class ProduitController {
 
         return true; // Stock suffisant
     }
+    @PutMapping("/conso/{id}")
+    public ResponseEntity<ProduitConso> updateProduitConso(@PathVariable(name = "id") Long id,
+                                                           @RequestBody ProduitConso produitConso) {
+        // Ensure the ID in the URL matches the product being updated
+        produitConso.setId(id);
+        // Handle potential errors (e.g., product not found)
+        ProduitConso existingProduitConso = (ProduitConso) produitRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("ProduitConso not found with id: " + id));
+        // Update fields
+        existingProduitConso.setDate(LocalDateTime.now());
+        existingProduitConso.setName(produitConso.getName());
+        existingProduitConso.setQuantite(produitConso.getQuantite());
+        ProduitConso updatedProduitConso = produitRepository.save(existingProduitConso);
+        return ResponseEntity.ok(updatedProduitConso);
+    }
     @GetMapping("/statistiques")
     public Map<String, Long> getProduitFiniStatistiques() {
         Map<String, Long> statistiques = new HashMap<>();
@@ -202,4 +228,55 @@ public class ProduitController {
 
         return statistiques;
     }
+    @PutMapping("/soustraireQuantites")
+    public void soustraireQuantites(@RequestBody Rebut rebut) {
+        ProduitFini produitFini = (ProduitFini) produitRepository.findById(rebut.getIdProduitFini())
+                .orElseThrow(() -> new ResourceNotFoundException("Produit fini not found with id: " + rebut.getIdProduitFini()));
+
+        for (MatierePremier matiere : produitFini.getMatieresPremieres()) {
+            // Calculate the quantity to subtract based on the quantity of rebut added
+            float quantiteRequise = matiere.getQuantite() * rebut.getQuantite();
+
+            ProduitConso produitConso = produitRepository.findProduitConsoByName(matiere.getName());
+
+            if (produitConso != null) {
+                produitConso.setQuantite(produitConso.getQuantite() - quantiteRequise);
+
+                // Ensure the quantity does not go negative
+                if (produitConso.getQuantite() < 0) {
+                    produitConso.setQuantite(0);
+                }
+
+                produitRepository.save(produitConso);
+            }
+        }
+    }
+    @PutMapping("/recalculerQuantites")
+    public void recalculerQuantites(@RequestBody Rebut rebut, @RequestParam int ancienneQuantite) {
+        int nouvelleQuantite = rebut.getQuantite();
+        int differenceQuantite = nouvelleQuantite - ancienneQuantite;
+
+        ProduitFini produitFini = (ProduitFini) produitRepository.findById(rebut.getIdProduitFini())
+                .orElseThrow(() -> new ResourceNotFoundException("Produit fini not found"));
+
+        for (MatierePremier matiere : produitFini.getMatieresPremieres()) {
+            float quantiteRequise = matiere.getQuantite() * differenceQuantite;
+
+            ProduitConso produitConso = produitRepository.findProduitConsoByName(matiere.getName());
+
+            if (produitConso != null) {
+                if (quantiteRequise > 0) { // Rebut augmenté
+                    System.out.println(produitConso.getQuantite());
+                    produitConso.setQuantite(produitConso.getQuantite() - quantiteRequise);
+                    System.out.println(produitConso.getQuantite());
+                } else if (quantiteRequise < 0) { // Rebut diminué
+                    System.out.println(produitConso.getQuantite());
+                    produitConso.setQuantite(produitConso.getQuantite() + Math.abs(quantiteRequise));
+                    System.out.println(produitConso.getQuantite());
+                }
+                produitRepository.save(produitConso);
+            }
+        }
+    }
+
 }

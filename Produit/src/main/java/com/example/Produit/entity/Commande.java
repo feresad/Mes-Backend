@@ -13,4 +13,5 @@ public class Commande {
 
     private Long  idProduitFini;
     private int quantite;
+    private int quantiteRestante;
 }

@@ -4,6 +4,7 @@ package com.example.Produit.controller;
 import com.example.Produit.Repository.CommandeRepository;
 import com.example.Produit.Repository.OrdreFabricationRepository;
 import com.example.Produit.Repository.ProduitRepository;
+import com.example.Produit.Repository.Produit_fini_Repository;
 import com.example.Produit.entity.*;
 import com.example.consommation.entity.QuantiteMatiereConso;
 import com.example.consommation.entity.consommation;
@@ -16,6 +17,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("ordreFabrication")
@@ -28,6 +30,8 @@ public class OrdreFabricationController {
     @Autowired
     private ProduitRepository produitRepository;
     @Autowired
+    private Produit_fini_Repository produitFiniRepository;
+    @Autowired
     private RestTemplate restTemplate;
     @Value("${consommation-service.url}")
     private String consoServiceUrl;
@@ -36,19 +40,29 @@ public class OrdreFabricationController {
     public Iterable<OrdreFabrication> getAllOrdresFabrication() {
         return ordreFabricationRepository.findAll();
     }
-
+    @GetMapping("/commande/{id}")
+    public Commande getCommande(@PathVariable Long id){
+        return commandeRepository.findByIdProduitFini(id);
+    }
     @PostMapping("/add")
     public OrdreFabrication addOrdreFabrication(@RequestBody OrdreFabrication ordreFabrication) {
         Commande existanceCommande = commandeRepository.findByIdProduitFini(ordreFabrication.getIdProduitFini());
-        if(existanceCommande == null){
+        if (existanceCommande == null) {
             throw new ResourceNotFoundException("Commande not found with id: " + ordreFabrication.getIdProduitFini());
         }
         ordreFabrication.setIdCommande(existanceCommande.getId());
         ordreFabrication.setIdProduitFini(existanceCommande.getIdProduitFini());
-        ordreFabrication.setQuantite(existanceCommande.getQuantite());
+        existanceCommande.setQuantiteRestante(existanceCommande.getQuantiteRestante() - ordreFabrication.getQuantite());
         if (ordreFabrication.getEtat() == 2) {
             createConsommationForOrdreFabrication(ordreFabrication);
         }
+        Optional<ProduitFini> produitFini = produitFiniRepository.findById(ordreFabrication.getIdProduitFini());
+        if (existanceCommande.getQuantiteRestante() == 0) {
+            produitFini.get().setEtat(2);
+        } else if (existanceCommande.getQuantiteRestante() > 0) {
+            produitFini.get().setEtat(1);
+        }
+
         return ordreFabricationRepository.save(ordreFabrication);
     }
 
@@ -65,10 +79,21 @@ public class OrdreFabricationController {
 
         OrdreFabrication existingOrdreFabrication = ordreFabricationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("OrdreFabrication not found with id: " + id));
+        Commande associatedCommande = commandeRepository.findById(existingOrdreFabrication.getIdCommande())
+                .orElseThrow(() -> new ResourceNotFoundException("Commande not found with id: " + existingOrdreFabrication.getIdCommande()));
+        associatedCommande.setId(existingOrdreFabrication.getIdCommande());
+        int difference = ordreFabricationDetails.getQuantite() - existingOrdreFabrication.getQuantite();
+        if (difference < 0) {
+            // Si la quantité diminue, ajouter la différence (valeur absolue) à la quantité restante
+            associatedCommande.setQuantiteRestante(associatedCommande.getQuantiteRestante() + Math.abs(difference));
+        } else if (difference > 0) {
+            associatedCommande.setQuantiteRestante(associatedCommande.getQuantiteRestante() - difference);
+        }
+        commandeRepository.save(associatedCommande);
 
         // Mise à jour des propriétés de l'ordre de fabrication
         existingOrdreFabrication.setIdProduitFini(ordreFabricationDetails.getIdProduitFini());
-        existingOrdreFabrication.setIdCommande(ordreFabricationDetails.getIdCommande());
+        existingOrdreFabrication.setIdCommande(associatedCommande.getId());
         existingOrdreFabrication.setIdmachine(ordreFabricationDetails.getIdmachine());
         existingOrdreFabrication.setQuantite(ordreFabricationDetails.getQuantite());
         existingOrdreFabrication.setQuantiteRebut(ordreFabricationDetails.getQuantiteRebut());
@@ -77,8 +102,16 @@ public class OrdreFabricationController {
         existingOrdreFabrication.setDateFin(ordreFabricationDetails.getDateFin());
 
         OrdreFabrication updatedOrdreFabrication = ordreFabricationRepository.save(existingOrdreFabrication);
+        Commande Commande = commandeRepository.findById(existingOrdreFabrication.getIdCommande())
+                .orElseThrow(() -> new ResourceNotFoundException("Commande not found with id: " + existingOrdreFabrication.getIdCommande()));
+        Optional<ProduitFini> produitFini = produitFiniRepository.findById(updatedOrdreFabrication.getIdProduitFini());
+        if (Commande.getQuantiteRestante() == 0) {
+            produitFini.get().setEtat(2);
+        } else if (Commande.getQuantiteRestante() > 0) {
+            produitFini.get().setEtat(1);
+        }
+        produitFiniRepository.save(produitFini.get());
 
-        // Si l'état est 2, créer une consommation
         if (updatedOrdreFabrication.getEtat() == 2) {
             createConsommationForOrdreFabrication(updatedOrdreFabrication);
         }
@@ -124,8 +157,31 @@ public class OrdreFabricationController {
 
 
     @DeleteMapping("/{id}")
-    public void deleteOrdreFabrication(@PathVariable Long id) {
-        ordreFabricationRepository.deleteById(id);
+    public ResponseEntity<Void> deleteOrdreFabrication(@PathVariable Long id) {
+        OrdreFabrication ordreFabrication = ordreFabricationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("OrdreFabrication not found with id: " + id));
+
+        if (ordreFabrication.getEtat() == 0) {
+            Commande commande = commandeRepository.findById(ordreFabrication.getIdCommande())
+                    .orElseThrow(() -> new ResourceNotFoundException("Commande not found with id: " + ordreFabrication.getIdCommande()));
+            commande.setQuantiteRestante(commande.getQuantiteRestante() + ordreFabrication.getQuantite());
+            commandeRepository.save(commande);
+        }
+        Commande commande = commandeRepository.findById(ordreFabrication.getIdCommande())
+                .orElseThrow(() -> new ResourceNotFoundException("Commande not found with id: " + ordreFabrication.getIdCommande()));
+        Optional<ProduitFini> produitFini = produitFiniRepository.findById(ordreFabrication.getIdProduitFini());
+        if (commande.getQuantiteRestante() == 0) {
+            produitFini.get().setEtat(2);
+        } else if (commande.getQuantiteRestante() == produitFini.get().getQuantite()) {
+            produitFini.get().setEtat(0);
+        }
+        else{
+            produitFini.get().setEtat(1);
+        }
+        produitFiniRepository.save(produitFini.get());
+
+        ordreFabricationRepository.delete(ordreFabrication);
+        return ResponseEntity.noContent().build();
     }
     @PutMapping("/updateByMachineId/{machineId}")
     public ResponseEntity<Void> updateOrdreFabricationByMachineId(@PathVariable("machineId") Long machineId) {
